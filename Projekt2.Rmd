@@ -1,0 +1,235 @@
+---
+title: "Wstęp do Analizy Danych - Projekt 2"
+output:
+  html_document:
+    df_print: paged
+---
+## Wstępnie o danych
+Jest to fikcyjny zestaw danych, który został stworzony przez analityków danych IBM. Dostępny jest na stronie [Kaggle](https://www.kaggle.com/pavansubhasht/ibm-hr-analytics-attrition-dataset/version/1). Przedstawia różne czynniki wpływające na wyniszczenie zawodowe i rotację pracowników.
+
+Wypalenie ma kluczowe znaczenie w dzisiejszych czasach. Przez nie organizacje tracą kluczowe umiejętności i wiedzę, poprzez odejście pracowników. Menadżerowie i pracownicy HR są bardzo zainteresowani zmiejszeniem rotacji w organizacjach w sposób najbardziej efektywny - żeby przyczynił się do rozwoju organizacji. Pracownicy to najcenniejszy kapitał, niezmiernie ważne jest utrzymanie stałej i utalentowanej siły roboczej.
+
+## Praca z danymi 
+
+Wczytywanie bibliotek
+```{r, error=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(tidyverse)
+```
+Wczytywanie danych
+```{r}
+dane <- read.csv("C:/Users/tomec/Desktop/ważne/STUDIA/3SEMESTR/WdAD/Projekt2/dane.csv", stringsAsFactors = T)
+```
+```{r}
+head(dane)
+dane <- dane %>%
+  rename(Age = ď.żAge)
+```
+
+## Histogram rozkład wieku pracowników płci męskiej i żeńskiej w organizacji przedstawiony w stosunku do całkowitej liczby pracowników
+
+### Przygotowanie danych 
+```{r}
+daneAll <- dane %>%
+  select(Gender, Age) %>%
+  mutate(Gender = "All")
+dF <- dane %>%
+  filter(Gender == "Female")
+dM <- dane %>%
+  filter(Gender == "Male")
+dFA <- dF %>%
+  filter(Attrition == "Yes") %>%
+  mutate(Gender = "FemaleAttritionYes")
+dMA <- dM %>%
+  filter(Attrition == "Yes") %>%
+  mutate(Gender = "MaleAttritionYes")
+```
+
+W dataframe daneAll znajduje się wiek każdego pracownika organizacji, oraz cecha Gender, gdzie są tylko wartości "All".
+W dataframe dF i dM znajdują się odpowiednio wiek każdego pracownika płci żeńskiej oraz płci męskiej.
+
+### Tworzenie wykresu
+```{r, out.width="150%", error=FALSE}
+pF <- ggplot(
+  mapping = aes(
+    x=Age,
+    fill=Gender)) +
+  geom_histogram(
+    data = daneAll,
+    alpha = 0.5,
+    color = "black") + 
+  geom_histogram(
+    data = dF,
+    alpha = 0.9,
+    color = "black") +
+  scale_fill_manual(
+    labels = c("All", "Female"),
+    values = c("black", "brown")) +
+  theme_light() 
+pM <- ggplot(
+  mapping = aes(
+    x=Age,
+    fill=Gender)) +
+  geom_histogram(
+    data = daneAll,
+    alpha = 0.5,
+    color = "black") + 
+  geom_histogram(
+    data = dM,
+    alpha = 0.3,
+    color = "black") +
+  scale_fill_manual(
+    labels = c("All", "Male"),
+    values = c("black", "steelblue3")) +
+  theme_light()
+gridExtra::grid.arrange(pM,pF, ncol = 2, top = "Rozkład wieku pracowników płci męskiej i żeńskiej w organizacji 
+przedstawione w stosunku do całkowitej liczby pracowników")
+```
+
+### Opis:
+Na wykresie zostały przedstawione rozkłady wieku pracowników organizacji płci męskiej i żeńskiej w stosunku do łącznej ilości wszystkich pracowników. Kolorowe obszary to rozkłady odpowiednio płci męskiej i żeńskiej, a ciemny obszar to ogólny rozkład wieku pracowników.
+
+## Wykres kołowy przedstawiający procentowe zestawienie każdej z grup satysfakcji z pracy w stosunku do całości.
+### Przygotowuje dane do wykresu
+
+```{r }
+(dJSat <- dane %>%
+  group_by(JobSatisfaction) %>%
+  summarize(suma = n()) %>%
+  mutate(prop = suma/sum(suma)*100)) 
+```
+
+### Tworzę wykres
+```{r}
+dJSat %>%
+  ggplot(
+    aes(x="",
+        y=suma,
+        fill=as.factor(JobSatisfaction))) +
+  geom_bar(
+    stat="identity",
+    width=1,
+    color="white") + 
+  coord_polar("y",
+              start=0) +
+  theme_void() + 
+  geom_text(
+    aes(
+      label = paste(round(prop,2),"%", sep = "")),
+      position = position_stack(vjust = 0.5)) + # dzieki temu procent jest na środku każdej grupy wykresu
+  scale_fill_discrete(
+    name = "Job Satisfaction Level",
+    labels = c("Low", "Medium", "High", "Very High")) +
+  ggtitle("Udział grup osób deklarujących dany poziom satysfakcji z pracy
+w stosunku do wszystkich osób w organizacji")
+```
+
+
+### Opis wykresu:
+Z wykresu dowiadujemy się, że satysfakcja z pracy dzieli się na 4 poziomy zadowolenia, które opisane są na legendzie. W tej organizacji przeważają osoby zadowolone z pracy. Około 20% zapytanych osób deklaruje, że praca ich nie satysfakcjonuje.   
+
+## Wykres słupków sąsiadujących pokazujący proporcję czterech grup różnego poziomu równowagi między pracą, a życiem osobistym pracowników organizacji w podziale na tych, którzy są wyniszczeni zawodowo oraz tych, którzy nie. 
+
+```{r}
+dane %>%
+  ggplot(
+    aes(x = WorkLifeBalance)) +
+  geom_bar(aes(y=..prop.., fill = factor(..x..))) +
+  facet_grid(~Attrition) +
+  labs(fill = "WorkLifeBalance") +
+  ggtitle("Udział poszczególnych grup różnego poziomu równowagi pomiędzy pracą,
+  a życiem osobistym pracowników organizacji
+  w podziale na tych, którzy są wyniszczeni zawodowo oraz tych, którzy nie") + 
+  scale_fill_discrete(
+  name = "WorkLifeBalance",
+  labels = c("Low", "Medium", "High", "Very High")) +
+  theme_light()
+```
+
+
+### Opis
+Z wykresu dowiadujemy się, że poziom równowagi pomiędzy pracą,
+a życiem osobistym pracowników organizacji jest prawie taki sam dla poziomu Medium oraz Very High. Różnica jest za to w najniższym poziomie balansu między pracą, a życiem osobistym. Dla pracowników wypalonych zawodowo wartość tego poziomu jest wyższa niż dla tych niewypalonych. Świadczy to o tym, że osoby wypalone zawodowo często nie mogą odnaleźć tej równowagi. W obu grupach najwięcej osób zadeklarowało, że ich WorkLifeBalance jest na poziomie wysokim. Na wypalenie zawodowe nie wpływa tylko ten czynnik.
+
+## Wykres słupkowo-kropkowy obrazujący średnie miesięczne zarobki dla każdego ze stanowisk w organizacji
+```{r}
+dane %>%
+  group_by(JobRole) %>%
+  summarize(meanIncome=mean(MonthlyIncome)) %>%
+  arrange(meanIncome) %>%
+  mutate(JobRole=factor(JobRole, levels=JobRole)) %>%
+  ggplot(
+    aes(
+      x=meanIncome,
+      y=JobRole)) +
+  geom_segment(
+    aes(
+      yend=JobRole,
+      xend=0),
+    size = 0.7) +
+  geom_point(
+    size=2,
+    color="orange") +
+  scale_x_continuous(
+    "Mean of Monthly Income",
+    breaks = seq(0, 17500, 2500)) +
+  ylab(
+    "Job Position") + 
+  ggtitle("Średnie miesięczne zarobki dla każdego ze stanowisk w organizacji") +
+  theme_light()
+```
+
+### Opis:
+Managerzy zarabiają najwięcej, jest to około 17 000. Dyrektorzy badań nieco mniej tzn. około 16 250. Znacznie mniejsze średnie zarobki ma reszta stanowisk. Przedstawiciele opieki zdrowia, dyrektor produkcji oraz kierownik handlowy zarabiają podobne sumy, jest to około 7 500. Średnio o około połowę mniejsze średnie miesięczne zarobki niż dyrektor produkcji mają naukowcy prowadzący badania, pracownicy labolatoriów oraz przedstawiciele handlowi. Nie każde stanowisko dyrektorskie wiąże się z największymi zarobkami w organizacji.
+
+## Wykres pudełkowy miesięcznych zarobków dla każdego stanowiska w organizacji z podziałem na kobiety i mężczyzn
+```{r}
+dane %>%
+  ggplot(aes(x=JobRole, y=MonthlyIncome)) + 
+             geom_boxplot(aes(fill=Gender)) +
+  facet_wrap( ~ JobRole, scales="free") +
+  xlab("Job Role") +
+  ylab("Monthly Income") +
+  ggtitle("Miesięczny dochód dla poszczególnych stanowisk w organizacji
+z podziałem na płeć") +
+  theme_light() 
+```
+
+### Opis:
+Można zauważyć, że tylko dla poszczególnych grup występują wartości odstające. Na niektórych pozcyjach np. Research Director mężczyźni zarabiają średnio znacznie więcej niż kobiety. Dla reszty stanowisk średnia zarobków dla obu płci jest podobna.  
+
+## Wykres gęstości odległości miejsca pracy od miejsca zamieszkania dla pracowników wypalonych zawodowo oraz nie
+
+```{r}
+dMean <- dane %>%
+  group_by(Attrition) %>%
+  summarize(mean = mean(DistanceFromHome))
+
+dane %>%
+  ggplot() +
+  geom_density(
+    mapping = aes(
+      x = DistanceFromHome,
+      fill = Attrition), 
+    alpha = 0.4) +
+  geom_vline(
+    data=dMean,
+    aes(
+      xintercept=mean,
+      color=Attrition),
+      linetype="dashed",
+      size = 0.8) +
+  ggtitle("Gęstość odległości miejsca pracy od miejsca zamieszkania
+dla pracowników wypalonych zawodowo oraz nie") +
+  scale_x_continuous(
+    "DistanceFromHome",
+    breaks = seq(0, 30, 5)) +
+  theme_light()
+
+```
+
+
+### Opis:
+Widać, że pracownicy wypaleni zawodowo mieszkają znacznie dalej miejsca pracy niż ci, niewypaleni. Średnia odleglość miejsca pracy od miejsca zamieszkania dla pracowników wypalonych zawodowo wynosi około 10.5, a dla niewypalonych 8.5. Można wnioskować, że osoby mogą być wypalone poprzez długie dojazdy do pracy i problemy z tym związane.
